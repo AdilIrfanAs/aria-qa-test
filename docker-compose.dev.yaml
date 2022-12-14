@@ -1,0 +1,60 @@
+version: '3.3'
+services:
+  db:
+    container_name: dashboard_api
+    image: mysql:8.0
+    restart: always
+    environment:
+      - MYSQL_DATABASE=dashboardapi
+      - MYSQL_ROOT_PASSWORD=rFJjmcuf5dhauRMQj
+    ports:
+      - '3306:3306'
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u root --password=$$MYSQL_ROOT_PASSWORD
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 55
+    volumes:
+      - db:/var/lib/mysql
+  api:
+    container_name: api
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: linerocks/aria-qa-dashboardapi
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - 8000:8000
+    environment:
+      NODE_ENV: development
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: rFJjmcuf5dhauRMQj
+      DB_NAME: dashboardapi
+      JWT_SECRET_KEY: ABC
+    links:
+      - db
+    volumes:
+      - ./:/src
+  app:
+    container_name: app
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: linerocks/aria-qa-dashboard-app
+    ports:
+      - 3000:80
+    environment:
+      REACT_APP_API_URL: http://0.0.0.0:8000
+      REACT_APP_TIMEZONE_OFFSET: 7
+    links:
+      - db
+    volumes:
+      - ./:/src
+volumes:
+  db:
+    driver: local
